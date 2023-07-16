@@ -35,3 +35,11 @@ rnx --path . --cap 130 --sub
 ```
 
 Providing the --sub flag will also traverse subdirectories
+
+```shell
+rnx --path . --cap 130 --ascii
+```
+
+Providing the --ascii flag will replace all non-ascii characters with printable
+ascii (they may still be non-ascii however. Check the function
+calculate_name in find_and_rename)
