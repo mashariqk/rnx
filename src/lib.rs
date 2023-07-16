@@ -1,4 +1,5 @@
 pub mod find_and_rename;
+pub mod rand_ascii;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right

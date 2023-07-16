@@ -1,8 +1,9 @@
+use crate::rand_ascii::get_random_ascii_printable_code;
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::os::unix::prelude::OsStrExt;
 
-pub fn chop(path: &str, sub: bool, cap: usize) {
+pub fn chop(path: &str, sub: bool, cap: usize, ascii: bool) {
     let current_dir = std::path::PathBuf::from(path);
     let mut subs = vec![];
     if !current_dir.exists() {
@@ -19,7 +20,7 @@ pub fn chop(path: &str, sub: bool, cap: usize) {
                 None => {
                     chopped_name = format!(
                         "{}",
-                        calculate_name(path.file_name().expect("No file name!"), cap)
+                        calculate_name(path.file_name().expect("No file name!"), cap, ascii)
                             .to_str()
                             .expect("Cannot convert name to a valid utf-8 string")
                     );
@@ -29,7 +30,8 @@ pub fn chop(path: &str, sub: bool, cap: usize) {
                         "{}.{}",
                         calculate_name(
                             path.file_name().expect("No file name!"),
-                            cap - (extension.len() + 1)
+                            cap - (extension.len() + 1),
+                            ascii
                         )
                         .to_str()
                         .expect("Cannot convert name to a valid utf-8 string"),
@@ -55,22 +57,27 @@ pub fn chop(path: &str, sub: bool, cap: usize) {
         }
     }
     for p in &subs {
-        chop(p.as_str(), sub, cap);
+        chop(p.as_str(), sub, cap, ascii);
     }
 }
 
-fn calculate_name(name: &OsStr, chop_size: usize) -> OsString {
+fn calculate_name(name: &OsStr, chop_size: usize, ascii: bool) -> OsString {
     let rand = uuid::Uuid::new_v4().to_string()[..11].to_owned();
     let index = chop_size - rand.len();
     if index < 1 {
         return OsString::from(name);
     }
     let byte_slice = &name.as_bytes()[..index];
-    let lossy_name = String::from_utf8_lossy(&byte_slice).to_string();
+    let lossy_name = match ascii {
+        true => String::from_utf8_lossy(&byte_slice).to_string().replace(
+            |c: char| !c.is_ascii(),
+            String::from(get_random_ascii_printable_code()).as_str(),
+        ),
+        false => String::from_utf8_lossy(&byte_slice).to_string(),
+    };
     let name = format!("{}{}", lossy_name, rand);
-    if name.len() > chop_size {
-        OsString::from(&name[..chop_size])
-    } else {
-        OsString::from(name)
+    match name.len() > chop_size {
+        true => OsString::from(&name[..chop_size]),
+        false => OsString::from(name),
     }
 }
