@@ -62,7 +62,7 @@ pub fn chop(path: &str, sub: bool, cap: usize, ascii: bool) {
 }
 
 fn calculate_name(name: &OsStr, chop_size: usize, ascii: bool) -> OsString {
-    let rand = uuid::Uuid::new_v4().to_string()[..11].to_owned();
+    let rand = uuid::Uuid::new_v4().to_string()[..10].to_owned();
     let index = chop_size - rand.len();
     if index < 1 {
         return OsString::from(name);
