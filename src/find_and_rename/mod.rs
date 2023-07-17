@@ -3,7 +3,7 @@ use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::os::unix::prelude::OsStrExt;
 
-pub fn chop(path: &str, sub: bool, cap: usize, ascii: bool) {
+pub fn chop(path: &str, sub: bool, cap: usize, ascii: bool, dry: bool) {
     let current_dir = std::path::PathBuf::from(path);
     let mut subs = vec![];
     if !current_dir.exists() {
@@ -41,15 +41,26 @@ pub fn chop(path: &str, sub: bool, cap: usize, ascii: bool) {
                     );
                 }
             };
-            println!(
-                "Original name is {} and chopped name is {}",
-                path.file_name().unwrap().to_str().unwrap(),
-                chopped_name
-            );
-            let mut new_path = path.clone().to_owned();
-            new_path.set_file_name(chopped_name);
-            fs::rename(&path, &new_path)
-                .expect(format!("Cannot rename {:?} to {:?}", path, &new_path).as_str());
+            match dry {
+                true => {
+                    println!(
+                        "DRY RUN ONLY: Original name is {} and chopped name is {}",
+                        path.file_name().unwrap().to_str().unwrap(),
+                        chopped_name
+                    );
+                }
+                false => {
+                    println!(
+                        "Original name is {} and chopped name is {}",
+                        path.file_name().unwrap().to_str().unwrap(),
+                        chopped_name
+                    );
+                    let mut new_path = path.clone().to_owned();
+                    new_path.set_file_name(chopped_name);
+                    fs::rename(&path, &new_path)
+                        .expect(format!("Cannot rename {:?} to {:?}", path, &new_path).as_str());
+                }
+            };
         } else if path.is_dir() && sub {
             subs.push(String::from(
                 path.to_str().expect("Cannot convert path to string"),
@@ -57,7 +68,7 @@ pub fn chop(path: &str, sub: bool, cap: usize, ascii: bool) {
         }
     }
     for p in &subs {
-        chop(p.as_str(), sub, cap, ascii);
+        chop(p.as_str(), sub, cap, ascii, dry);
     }
 }
 

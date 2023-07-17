@@ -19,9 +19,13 @@ struct Args {
     /// Replace all non-ascii with printable ascii chars
     #[clap(long, short)]
     ascii: bool,
+
+    /// No changes will be made if this is passed
+    #[clap(long, short)]
+    dry: bool,
 }
 
 fn main() {
     let args = Args::parse();
-    chop(args.path.as_str(), args.sub, args.cap, args.ascii)
+    chop(args.path.as_str(), args.sub, args.cap, args.ascii, args.dry)
 }
