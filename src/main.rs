@@ -1,4 +1,5 @@
 use clap::Parser;
+
 use rnx::find_and_rename::chop;
 
 #[derive(Parser, Debug)]
@@ -11,6 +12,10 @@ struct Args {
     /// Max length of the file name *INCLUDING* extension
     #[arg(short, long)]
     cap: usize,
+
+    /// Ignore these extensions
+    #[arg(short, long)]
+    ignore: Option<String>,
 
     /// Whether to consider sub-directories
     #[clap(long, short)]
@@ -27,5 +32,14 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    chop(args.path.as_str(), args.sub, args.cap, args.ascii, args.dry)
+    chop(
+        args.path.as_str(),
+        args.sub,
+        args.cap,
+        args.ascii,
+        args.dry,
+        None,
+        None,
+        &args.ignore,
+    )
 }

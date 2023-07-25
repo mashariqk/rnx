@@ -1,21 +1,61 @@
 use crate::rand_ascii::get_random_ascii_printable_code;
+use std::cmp::Ordering;
+use std::collections::HashSet;
 use std::ffi::{OsStr, OsString};
 use std::fs;
 use std::os::unix::prelude::OsStrExt;
+use std::time::{Duration, SystemTime};
 
-pub fn chop(path: &str, sub: bool, cap: usize, ascii: bool, dry: bool) {
+pub fn chop(
+    path: &str,
+    sub: bool,
+    cap: usize,
+    ascii: bool,
+    dry: bool,
+    created: Option<Duration>,
+    modified: Option<Duration>,
+    ignore: &Option<String>,
+) {
     let current_dir = std::path::PathBuf::from(path);
     let mut subs = vec![];
     if !current_dir.exists() {
         println!("Invalid path specified: {}", path);
         return;
     }
+    let mut forbidden_extensions: Option<HashSet<&str>> = None;
+    if ignore.is_some() {
+        forbidden_extensions = Some(ignore.as_ref().unwrap().split(",").collect());
+    }
     for entry in fs::read_dir(current_dir).expect("Not a valid directory") {
         let entry = entry.expect("Not valid");
         let path = entry.path();
         if path.is_file() && path.file_name().unwrap().len() > cap {
             let extension = path.extension();
+            if forbidden_extensions.is_some() && extension.is_some() {
+                let forbidden_extensions = forbidden_extensions.as_ref().unwrap();
+                let extension = extension.as_ref().unwrap().to_str().unwrap();
+                if forbidden_extensions.contains(extension) {
+                    println!(
+                        "Skipping this file since it is on the ignore list {:#?}",
+                        path
+                    );
+                    continue;
+                }
+            }
             let chopped_name;
+            let metadata = fs::metadata(&path).expect("Unable to get metadata");
+            let creation_time = SystemTime::now()
+                .duration_since(metadata.created().expect("Cannot get creation time"))
+                .expect("Cannot calculate duration");
+            let modified_time = SystemTime::now()
+                .duration_since(metadata.modified().expect("Cannot get modified time"))
+                .expect("Cannot calculate duration");
+            if modified.is_some() && modified.unwrap().cmp(&modified_time) == Ordering::Greater {
+                continue;
+            }
+            if created.is_some() && created.unwrap().cmp(&creation_time) == Ordering::Greater {
+                continue;
+            }
             match extension {
                 None => {
                     chopped_name = format!(
@@ -68,7 +108,7 @@ pub fn chop(path: &str, sub: bool, cap: usize, ascii: bool, dry: bool) {
         }
     }
     for p in &subs {
-        chop(p.as_str(), sub, cap, ascii, dry);
+        chop(p.as_str(), sub, cap, ascii, dry, created, modified, ignore);
     }
 }
 
@@ -87,8 +127,9 @@ fn calculate_name(name: &OsStr, chop_size: usize, ascii: bool) -> OsString {
         false => String::from_utf8_lossy(&byte_slice).to_string(),
     };
     let name = format!("{}{}", lossy_name, rand);
+    let name = name.as_bytes();
     match name.len() > chop_size {
-        true => OsString::from(&name[..chop_size]),
-        false => OsString::from(name),
+        true => OsString::from(String::from_utf8_lossy(&name[..chop_size]).to_string()),
+        false => OsString::from(String::from_utf8_lossy(&name).to_string()),
     }
 }
